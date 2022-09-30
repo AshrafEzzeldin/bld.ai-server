@@ -9,11 +9,7 @@ data = json.load(f)
 class Course(View):
 
     def get(self, request, *args, **kwargs):
-        if len(kwargs) == 0:
-            return JsonResponse(data)
-        else:
-            return JsonResponse(data[str(kwargs['id'])] if str(kwargs['id']) in data.keys() else
-                                {"error": "error"})
+        return JsonResponse(data)
 
     def post(self, request, *args, **kwargs):
         body_unicode = request.body.decode('utf-8')
@@ -31,13 +27,15 @@ class Course(View):
             json.dump(data, file, ensure_ascii=False)
         return JsonResponse(data)
 
-    def delete(self, request, *args, **kwargs):
-        if len(kwargs) == 0:
-            return JsonResponse({"Error": "error"})
 
+class OneCourse(View):
+
+    def get(self, request, *args, **kwargs):
+        return JsonResponse(data[str(kwargs['id'])] if str(kwargs['id']) in data.keys() else
+                            {"error": "error"})
+
+    def delete(self, request, *args, **kwargs):
         data.pop(str(kwargs['id']), None)
         with open('courses/db.json', 'w') as file:
             json.dump(data, file, ensure_ascii=False)
         return JsonResponse(data)
-
-# Create your views here.
