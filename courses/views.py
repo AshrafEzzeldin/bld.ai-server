@@ -10,6 +10,8 @@ class Course(View):
     def get(self, request, *args, **kwargs):
         return JsonResponse(list(CourseModel.objects.values().order_by("name")), safe=False)
 
+
+
     def post(self, request, *args, **kwargs):
         body_unicode = request.body.decode('utf-8')
         body = json.loads(body_unicode)
@@ -43,3 +45,9 @@ class OneCourse(View):
     def delete(self, request, *args, **kwargs):
         item = CourseModel.objects.filter(id=kwargs['id']).delete()
         return JsonResponse("deleted", safe=False) if item[0] != 0 else JsonResponse("no record found", safe=False)
+
+
+class DurationCourse(View):
+    def get(self, request, *args, **kwargs):
+        c = list(CourseModel.objects.filter(duration__gt=kwargs['duration']).values())
+        return JsonResponse(c, safe=False)
