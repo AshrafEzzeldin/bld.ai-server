@@ -1,41 +1,45 @@
 from django.views import View
 import json
 from django.http import JsonResponse
-
-f = open('courses/db.json')
-data = json.load(f)
+from courses.models import Course as CourseModel
+from django.forms.models import model_to_dict
 
 
 class Course(View):
 
     def get(self, request, *args, **kwargs):
-        return JsonResponse(data)
+        return JsonResponse(list(CourseModel.objects.values().order_by("name")), safe=False)
 
     def post(self, request, *args, **kwargs):
         body_unicode = request.body.decode('utf-8')
         body = json.loads(body_unicode)
-        data.update(body)
-        with open('courses/db.json', 'w') as file:
-            json.dump(data, file, ensure_ascii=False)
-        return JsonResponse(data)
+        c = CourseModel(name=body["name"], description=body["description"])
+        c.save()
+        return JsonResponse(model_to_dict(c))
 
     def put(self, request, *args, **kwargs):
         body_unicode = request.body.decode('utf-8')
         body = json.loads(body_unicode)
-        data.update(body)
-        with open('courses/db.json', 'w') as file:
-            json.dump(data, file, ensure_ascii=False)
-        return JsonResponse(data)
+        c = CourseModel.objects.filter(pk=body['id'])
+        if len(c) == 0:
+            return JsonResponse("NO OBJECT", safe=False)
+        c = c[0]
+        if body['name']:
+            c.name = body['name']
+        if body['description']:
+            c.description = body['description']
+        c.save()
+        return JsonResponse("done", safe=False)
 
 
 class OneCourse(View):
 
     def get(self, request, *args, **kwargs):
-        return JsonResponse(data[str(kwargs['id'])] if str(kwargs['id']) in data.keys() else
-                            {"error": "error"})
+        c = CourseModel.objects.filter(pk=kwargs['id'])
+        if len(c) == 0:
+            return JsonResponse("NO OBJECT", safe=False)
+        return JsonResponse(model_to_dict(c[0]))
 
     def delete(self, request, *args, **kwargs):
-        data.pop(str(kwargs['id']), None)
-        with open('courses/db.json', 'w') as file:
-            json.dump(data, file, ensure_ascii=False)
-        return JsonResponse(data)
+        item = CourseModel.objects.filter(id=kwargs['id']).delete()
+        return JsonResponse("deleted", safe=False) if item[0] != 0 else JsonResponse("no record found", safe=False)
