@@ -1,53 +1,73 @@
-from django.views import View
-import json
-from django.http import JsonResponse
+from rest_framework import status
 from courses.models import Course as CourseModel
-from django.forms.models import model_to_dict
+from courses.models import User as UserModel
+
+from rest_framework.views import APIView
+from .serializer import *
+from rest_framework.response import Response
 
 
-class Course(View):
+class User(APIView):
 
-    def get(self, request, *args, **kwargs):
-        return JsonResponse(list(CourseModel.objects.values().order_by("name")), safe=False)
+    def get(self, request):
+        queryset = UserModel.objects.all()
+        serializer = UserSerializer(queryset, many=True)
+        return Response(serializer.data)
 
-
-
-    def post(self, request, *args, **kwargs):
-        body_unicode = request.body.decode('utf-8')
-        body = json.loads(body_unicode)
-        c = CourseModel(name=body["name"], description=body["description"])
-        c.save()
-        return JsonResponse(model_to_dict(c))
-
-    def put(self, request, *args, **kwargs):
-        body_unicode = request.body.decode('utf-8')
-        body = json.loads(body_unicode)
-        c = CourseModel.objects.filter(pk=body['id'])
-        if len(c) == 0:
-            return JsonResponse("NO OBJECT", safe=False)
-        c = c[0]
-        if body['name']:
-            c.name = body['name']
-        if body['description']:
-            c.description = body['description']
-        c.save()
-        return JsonResponse("done", safe=False)
+    def post(self, request):
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors)
 
 
-class OneCourse(View):
+class Course(APIView):
 
-    def get(self, request, *args, **kwargs):
-        c = CourseModel.objects.filter(pk=kwargs['id'])
-        if len(c) == 0:
-            return JsonResponse("NO OBJECT", safe=False)
-        return JsonResponse(model_to_dict(c[0]))
+    def get(self, request):
+        queryset = CourseModel.objects.all()
+        serializer = CourseSerializer(queryset, many=True)
+        return Response(serializer.data)
 
-    def delete(self, request, *args, **kwargs):
-        item = CourseModel.objects.filter(id=kwargs['id']).delete()
-        return JsonResponse("deleted", safe=False) if item[0] != 0 else JsonResponse("no record found", safe=False)
+    def post(self, request):
+        serializer = CourseSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors)
 
 
-class DurationCourse(View):
-    def get(self, request, *args, **kwargs):
-        c = list(CourseModel.objects.filter(duration__gt=kwargs['duration']).values())
-        return JsonResponse(c, safe=False)
+class OneCourse(APIView):
+
+    def get(self, request, id):
+        try:
+            serializer = CourseSerializer(
+                CourseModel.objects.filter(id=id)[0])
+        except IndexError:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(serializer.data)
+
+    def delete(self, request, id):
+        try:
+            serializer = CourseSerializer(
+                CourseModel.objects.get(pk=id).delete())
+        except IndexError:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(data={'message': 'deleted'})
+
+    def put(self, request, id):
+        serializer = CourseSerializer(data=request.data, instance=CourseModel.objects.get(pk=id), partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors)
+
+
+class DurationCourse(APIView):
+    def get(self, request, duration):
+        try:
+            serializer = CourseSerializer(
+                CourseModel.objects.filter(duration=duration), many=True)
+        except IndexError:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(serializer.data)
